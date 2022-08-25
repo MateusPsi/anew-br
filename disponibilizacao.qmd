@@ -1,0 +1,77 @@
+---
+title: "Disponibilização ANEW-Br"
+author: "Mateus Silvestrin"
+format: html
+---
+
+```{r}
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(purrr)
+```
+
+
+## Load data
+```{r}
+plan_nums <- seq(3,15,3)
+raw_data <- 
+  map_df(plan_nums, \(plan) read_excel('anew_words_raw.xlsx',
+                                     sheet = plan,
+                                     n_max = 72))
+
+processamento <- function(start_col, stop_col){
+  cols <- start_col:stop_col
+  dt <- raw_data %>% select(all_of(cols))
+  names(dt) <- c("Palavra","Valencia_Media",
+                 "Valencia_DP","Ativacao_Media",
+                 "Ativacao_DP")
+  dt %>% 
+    pivot_longer(-Palavra) %>% 
+    separate(name,into = c("Dimensao","stat")) %>%
+    pivot_wider(names_from = c(stat),
+                values_fn = mean)
+}
+
+start_cols <- seq(1,11,5)
+end_cols <- start_cols +4
+
+anew <- map2_df(start_cols,end_cols, processamento)
+```
+
+```{r}
+anew_valence <- anew %>% filter(Dimensao == "Valencia")
+anew_arousal <- anew %>% filter(Dimensao == "Ativacao")
+```
+
+```{r}
+save(anew,anew_valence,anew_arousal, file = "anew_br.Rdata")
+```
+
+```{r}
+write.csv(anew,"anew_br.csv", fileEncoding = "UTF-8")
+write.csv(anew_valence,"anew_br_valencia.csv", fileEncoding = "UTF-8")
+write.csv(anew_arousal,"anew_br_ativacao.csv", fileEncoding = "UTF-8")
+```
+
+## Estatísticas descritivas
+```{r}
+anew_valence %>% 
+  pull(Palavra) %>% 
+  stringr::str_count() %>% 
+  summary()
+
+anew_valence %>% 
+  pull(Palavra) %>% 
+  stringr::str_count() %>% 
+  sd(na.rm = TRUE)
+```
+
+```{r}
+summary(anew_valence$Media)
+```
+
+```{r}
+summary(anew_arousal$Media)
+```
+
